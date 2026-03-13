@@ -610,10 +610,9 @@ return;
 }
 
 data.forEach(req=>{
-const anonName = maskPatientName(req.user_id)
-
+const anonName = maskPatientName(req.member_id)
 list.innerHTML += `
-<div class="patient-item" data-id="${req.user_id}" onclick="selectPatient(this)">
+<div class="patient-item" data-id="${req.member_id}" onclick="selectPatient(this)">
 <div class="patient-name">👤 ${anonName}</div>
 <div class="patient-reason">${req.reason || 'General Consultation'}</div>
 </div>
@@ -663,7 +662,7 @@ grid.innerHTML = `
 `;
 
 try{
-const res=await fetch(`/api/last-health-summary?user_id=${userId}`)
+const res = await fetch(`/api/last-health-summary-member?member_id=${userId}`)
 const data=await res.json()
 
 grid.innerHTML=`
@@ -715,10 +714,11 @@ const data=await res.json()
 let html=""
 
 if(data.notes && data.notes.length > 0){
+
 data.notes.forEach(n=>{
 
-const bubble=n.sender==='patient'?'msg-user':'msg-coach'
-const sender=n.sender==='patient'?maskPatientName(userId):"You"
+const bubble=n.sender==='user'?'msg-user':'msg-coach'
+const sender = n.sender === 'user' ? maskPatientName(userId) : "You"
 
 html+=`
 <div class="chat-bubble ${bubble}">

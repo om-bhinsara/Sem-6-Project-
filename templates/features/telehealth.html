@@ -203,8 +203,7 @@
         </div>
 
         <label for="coachSelect">Select Health Coach</label>
-        <select id="coachSelect">
-            <option value="" disabled selected>Loading available coaches...</option>
+<select id="coachSelect" onchange="loadChatHistory(true)">            <option value="" disabled selected>Loading available coaches...</option>
         </select>
         
         <label for="reason">Primary Concern</label>
@@ -424,8 +423,11 @@ async function loadChatHistory(scrollToBottom = true) {
     if (!currentMemberId) return;
 
     try {
-        const res = await fetch(`/api/telehealth/coach-timeline?member_id=${currentMemberId}`);
-        const messages = await res.json();
+const coachId = document.getElementById("coachSelect").value;
+
+if (!coachId) return;
+
+const res = await fetch(`/api/telehealth/chat-history?member_id=${currentMemberId}&coach_id=${coachId}`);        const messages = await res.json();
         const container = document.getElementById("coachTimeline");
         
         if (!messages.length) {
@@ -446,12 +448,10 @@ async function loadChatHistory(scrollToBottom = true) {
 
         sortedMsgs.forEach(item => {
             const date = new Date(item.timestamp);
-            // Check if message is from User or Coach based on content convention or metadata
-            // Assuming "User:" prefix from the Coach Dashboard logic
-            const isUser = item.note.startsWith("User:");
-            const text = item.note.replace("User:", "").trim();
-            const senderName = isUser ? "You" : item.coach_name;
-            const bubbleClass = isUser ? "msg-user" : "msg-coach";
+const isUser = item.sender === "user";
+const text = item.message;
+const senderName = isUser ? "You" : "Coach";
+const bubbleClass = isUser ? "msg-user" : "msg-coach";  
 
             html += `
                 <div class="chat-bubble ${bubbleClass}">
@@ -473,26 +473,34 @@ async function loadChatHistory(scrollToBottom = true) {
 async function sendUserMessage() {
     const input = document.getElementById("userChatInput");
     const txt = input.value.trim();
+
     if (!txt) return;
     if (!currentMemberId) return alert("Select a profile first");
 
-    // Clear input immediately for better UX
+    const coachId = document.getElementById("coachSelect").value;
+
+    if (!coachId) {
+        alert("Please select a coach first");
+        return;
+    }
+
     input.value = "";
 
     try {
-        // We reuse the existing mechanism. 
-        // We prepend "User:" so the coach dashboard knows who sent it.
-        await fetch("/api/telehealth/send-message", { 
-            method: "POST", 
+        await fetch("/api/telehealth/send-message", {
+            method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-                message: "User: " + txt, 
-                member_id: currentMemberId 
-            }) 
+            body: JSON.stringify({
+                member_id: currentMemberId,
+                coach_id: coachId,
+                message: txt
+            })
         });
-        
+
         loadChatHistory(true);
+
     } catch(e) {
+        console.log(e);
         alert("Failed to send message");
     }
 }

@@ -368,7 +368,16 @@ class User(UserMixin, db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-    
+   
+class TelehealthChat(db.Model):
+    __tablename__ = "telehealth_chat"
+
+    id = db.Column(db.Integer, primary_key=True)
+    member_id = db.Column(db.Integer, db.ForeignKey("family_members.member_id"))
+    coach_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    sender = db.Column(db.String(10))
+    message = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)    
     
 @app.route("/admin/migrate-user-medical")
 def migrate_user_medical():
@@ -473,6 +482,83 @@ class Feedback(db.Model):
 with app.app_context():
     db.create_all()
 
+@csrf.exempt
+@app.route("/api/telehealth/send-message", methods=["POST"])
+def send_message():
+    if "user_id" not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.json
+    member_id = data.get("member_id")
+    coach_id = data.get("coach_id")
+    message = data.get("message")
+
+    if not member_id or not coach_id or not message:
+        return jsonify({"error": "Invalid data"}), 400
+
+    chat = TelehealthChat(
+        member_id=member_id,
+        coach_id=coach_id,
+        sender="user",
+        message=message
+    )
+
+    db.session.add(chat)
+    db.session.commit()
+
+    return jsonify({"success": True})
+
+@app.route("/api/telehealth/chat-history")
+def chat_history():
+
+    if "user_id" not in session:
+        return jsonify([]), 401
+
+    member_id = request.args.get("member_id", type=int)
+    coach_id = request.args.get("coach_id", type=int)
+
+    chats = (
+        TelehealthChat.query
+        .filter_by(member_id=member_id, coach_id=coach_id)
+        .order_by(TelehealthChat.created_at.asc())
+        .all()
+    )
+
+    result = []
+
+    for c in chats:
+        result.append({
+            "sender": c.sender,
+            "message": c.message,
+            "timestamp": c.created_at.isoformat()
+        })
+
+    return jsonify(result)
+
+@csrf.exempt
+@app.route("/api/coach/send-message", methods=["POST"])
+def coach_send_message():
+
+    if "user_id" not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    coach = User.query.get(session["user_id"])
+    if coach.role != "coach":
+        return jsonify({"error": "Forbidden"}), 403
+
+    data = request.json
+
+    chat = TelehealthChat(
+        member_id=data["member_id"],
+        coach_id=coach.id,
+        sender="coach",
+        message=data["message"]
+    )
+
+    db.session.add(chat)
+    db.session.commit()
+
+    return jsonify({"success": True})
 
 # --- GET Details for Selected Member (API) ---
 @app.route('/api/member/<int:id_val>')
@@ -613,37 +699,31 @@ def last_health_summary():
     
 @app.route("/api/last-health-summary-member")
 def last_health_summary_member():
-    if "user_id" not in session:
-        return jsonify({"exists": False}), 401
 
     member_id = request.args.get("member_id", type=int)
 
-    query = HeartRateRecord.query.filter_by(user_id=session["user_id"])
+    if not member_id:
+        return jsonify({"exists": False})
 
-    if member_id:
-        query = query.filter_by(member_id=member_id)
+    record = (
+        HeartRateRecord.query
+        .filter_by(member_id=member_id)
+        .order_by(HeartRateRecord.created_at.desc())
+        .first()
+    )
 
-    record = query.order_by(HeartRateRecord.created_at.desc()).first()
     if not record:
         return jsonify({"exists": False})
 
-    member_name = session["username"]
-    relationship = "Self"
-
-    if record.member_id:
-        member = FamilyMember.query.get(record.member_id)
-        if member:
-            member_name = member.member_name
-            relationship = member.relationship.title()
+    member = FamilyMember.query.get(member_id)
 
     return jsonify({
         "exists": True,
         "bpm": record.bpm,
-        "member_name": member_name,
-        "relationship": relationship,
         "aqi": record.aqi,
         "impactCategory": record.impact_category,
-        "message": record.stress_level,
+        "member_name": member.member_name if member else "Unknown",
+        "relationship": member.relationship if member else "Unknown",
         "timestamp": record.created_at.isoformat()
     })
     
@@ -686,28 +766,34 @@ def submit_consultation():
 
     return jsonify({"success": True})
 
+from sqlalchemy import text
+
 @app.route("/api/coach/requests")
 def coach_requests():
 
-    if "user_id" not in session:
-        return jsonify([])
-
     coach_id = session["user_id"]
 
-    requests = ConsultationRequest.query.filter_by(
-        coach_id=coach_id
-    ).order_by(ConsultationRequest.created_at.desc()).all()
+    rows = db.session.execute(text("""
+        SELECT 
+            id,
+            user_id,
+            reason,
+            details
+        FROM consultation_requests
+        WHERE coach_id = :coach_id
+        ORDER BY created_at DESC
+    """), {"coach_id": coach_id}).fetchall()
 
-    data = []
+    result = []
 
-    for r in requests:
-        data.append({
+    for r in rows:
+        result.append({
             "user_id": r.user_id,
-            "reason": r.reason,
-            "details": r.details
+            "member_id": r.user_id,
+            "reason": r.reason
         })
 
-    return jsonify(data)
+    return jsonify(result)
 
 @app.route("/api/telehealth/user-snapshot/<int:user_id>")
 def telehealth_user_snapshot(user_id):
@@ -1082,6 +1168,7 @@ def coach_dashboard():
         metrics=metrics,
         notes=notes
     )
+
 
 @app.route("/api/coach/patient/<int:user_id>/last-7")
 def coach_last_7_hr(user_id):
@@ -1815,63 +1902,51 @@ def view_certificate(filename):
 
     return send_file(file_path)
 
+from sqlalchemy import text
+
 @app.route("/api/coach/patient/<int:user_id>")
-def get_patient_details(user_id):
+def coach_patient_chat(user_id):
 
-    if "user_id" not in session:
-        return jsonify({"error": "Unauthorized"}), 401
+    rows = db.session.execute(text("""
+        SELECT sender, message, created_at
+        FROM telehealth_chat
+        WHERE member_id IN (
+            SELECT member_id
+            FROM family_members
+            WHERE user_id = :user_id
+        )
+        ORDER BY created_at ASC
+    """), {"user_id": user_id}).fetchall()
 
-    coach = User.query.get(session["user_id"])
-    if not coach or coach.role != "coach":
-        return jsonify({"error": "Forbidden"}), 403
+    notes = []
 
-    notes = (
-        CoachNote.query
-        .filter_by(user_id=user_id)
-        .order_by(CoachNote.created_at.asc())
-        .all()
-    )
+    for r in rows:
+        notes.append({
+            "sender": r.sender,
+            "note": r.message,
+            "timestamp": r.created_at
+        })
 
-    return jsonify({
-        "notes":[
-            {
-                "sender":"coach",
-                "note":n.note,
-                "date":n.created_at.strftime("%d %b %Y")
-            } for n in notes
-        ]
-    })
+    return jsonify({"notes": notes})
 
 @csrf.exempt
 @app.route("/api/coach/add-note", methods=["POST"])
-def add_coach_note():
-    if "user_id" not in session:
-        return jsonify({"error": "Unauthorized"}), 401
+def coach_add_note():
 
     data = request.json
-    patient_id = data.get("patient_id")
-    note = data.get("note")
+    member_id = data["patient_id"]
+    message = data["note"]
+    coach_id = session["user_id"]
 
-    if not patient_id or not note:
-        return jsonify({"error": "Invalid data"}), 400
-
-    # ✅ Fetch coach using SQLAlchemy (instead of psycopg2)
-    coach = User.query.get(session["user_id"])
-
-    if not coach or coach.role != "coach":
-        return jsonify({"error": "Forbidden"}), 403
-
-    # ✅ Save note using SQLAlchemy
-    note_obj = CoachNote(
-        coach_id=session["user_id"],
-        user_id=patient_id,
-        note=note
-    )
-
-    db.session.add(note_obj)
+    db.session.execute(text("""
+    INSERT INTO telehealth_chat
+    (member_id, coach_id, sender, message)
+    VALUES (:m,:c,'coach',:msg)
+    """), {"m":member_id,"c":coach_id,"msg":message})
+    
     db.session.commit()
 
-    return jsonify({"status": "saved"})
+    return jsonify({"status":"ok"})
 
 
 @app.route("/api/coach/profile")
@@ -2387,105 +2462,6 @@ def save_missing_data():
 from flask import Flask, render_template, jsonify, request, session, redirect, url_for
 from flask_login import login_required, current_user
 from datetime import datetime
-# Import your models (User, HealthData, etc.) here
-# from models import db, User, HealthData, CoachRequest, CoachNote
-
-# --- API: GET COACH PROFILE ---
-@app.route('/api/coach/profile')
-@login_required
-def api_coach_profile():
-    # Ensure the user is actually a coach
-    if current_user.role != 'coach':
-        return jsonify({"error": "Unauthorized"}), 403
-        
-    return jsonify({
-        "name": current_user.username,
-        "email": current_user.email,
-        "status": "approved" # Or fetch from db: current_user.coach_status
-    })
-
-# --- API: GET PATIENT REQUESTS ---
-@app.route('/api/coach/requests')
-@login_required
-def api_coach_requests():
-    # Fetch patients assigned to this coach
-    # Example Query: requests = CoachRequest.query.filter_by(coach_id=current_user.id).all()
-    
-    # MOCK DATA (Replace with DB Query)
-    # Return a list of patients requesting help
-    requests = [
-        {"patient_id": 2, "reason": "High Heart Rate Alert", "status": "active"},
-        {"patient_id": 5, "reason": "General Checkup", "status": "active"},
-        {"patient_id": 8, "reason": "Post-Workout Dizziness", "status": "pending"}
-    ]
-    return jsonify(requests)
-
-# --- API: GET HEALTH SUMMARY (VITALS) ---
-@app.route('/api/last-health-summary')
-@login_required
-def api_health_summary():
-    user_id = request.args.get('user_id')
-    
-    # Fetch latest health record for this patient
-    # record = HealthData.query.filter_by(user_id=user_id).order_by(HealthData.timestamp.desc()).first()
-    
-    # MOCK DATA
-    return jsonify({
-        "exists": True,
-        "bpm": 88,
-        "aqi": 145,
-        "impactCategory": "Moderate Risk"
-    })
-
-# --- API: GET GRAPH DATA (LAST 7) ---
-@app.route('/api/coach/patient/<int:user_id>/last-7')
-@login_required
-def api_graph_data(user_id):
-    # Fetch last 7 records
-    # data = HealthData.query.filter_by(user_id=user_id).order_by(HealthData.timestamp.desc()).limit(7).all()
-    
-    # MOCK DATA
-    return jsonify([
-        {"time": "2023-10-01", "bpm": 72},
-        {"time": "2023-10-02", "bpm": 75},
-        {"time": "2023-10-03", "bpm": 80},
-        {"time": "2023-10-04", "bpm": 85}, # Spike
-        {"time": "2023-10-05", "bpm": 78},
-        {"time": "2023-10-06", "bpm": 76},
-        {"time": "2023-10-07", "bpm": 74}
-    ])
-
-# --- API: GET CHAT HISTORY ---
-@app.route('/api/coach/patient/<int:user_id>')
-@login_required
-def api_get_chat(user_id):
-    # Fetch chat notes between coach and patient
-    # notes = CoachNote.query.filter_by(patient_id=user_id, coach_id=current_user.id).all()
-    
-    # MOCK DATA
-    # Sender: 'coach' or 'patient'
-    return jsonify({
-        "notes": [
-            {"sender": "patient", "note": "I felt dizzy yesterday.", "date": "10:00 AM"},
-            {"sender": "coach", "note": "Did you measure your BP?", "date": "10:05 AM"},
-            {"sender": "patient", "note": "No, just heart rate.", "date": "10:10 AM"}
-        ]
-    })
-
-# --- API: SEND MESSAGE ---
-@app.route('/api/coach/add-note', methods=['POST'])
-@login_required
-def api_add_note():
-    data = request.json
-    patient_id = data.get('patient_id')
-    note_text = data.get('note')
-    
-    # Save to DB
-    # new_note = CoachNote(patient_id=patient_id, coach_id=current_user.id, note=note_text, sender='coach')
-    # db.session.add(new_note)
-    # db.session.commit()
-    
-    return jsonify({"success": True})
 
 if __name__ == '__main__':
     app.run(debug=True)
