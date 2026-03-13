@@ -8,429 +8,768 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-    /* --- GLOBAL THEME --- */
-    :root {
-        --bg-dark: #0f172a; --bg-sidebar: #111827; --bg-card: #1e293b;
-        --primary: #f43f5e; --primary-hover: #e11d48;
-        --text-main: #f8fafc; --text-muted: #94a3b8;
-        --border: rgba(255, 255, 255, 0.08);
-    }
-    * { box-sizing: border-box; }
-    
-    body { 
-        margin: 0; font-family: 'Inter', sans-serif; 
-        background: var(--bg-dark); color: var(--text-main); 
-        height: 100vh; width: 100vw; display: flex; 
-        flex-direction: column; overflow: hidden; 
-    }
 
-    /* HEADER */
-    header { 
-        height: 64px; background: var(--bg-sidebar); 
-        border-bottom: 1px solid var(--border); 
-        display: flex; align-items: center; justify-content: space-between; 
-        padding: 0 24px; flex-shrink: 0; width: 100%;
-    }
-    .brand { font-size: 18px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
-    .brand span { color: var(--primary); }
-    
-    .logout-btn { 
-        background: transparent; border: 1px solid var(--border); 
-        color: var(--text-muted); padding: 8px 16px; border-radius: 8px; 
-        font-size: 13px; font-weight: 500; cursor: pointer; transition: 0.2s; 
-        text-decoration: none; 
-    }
-    .logout-btn:hover { border-color: var(--primary); color: #fff; background: rgba(244, 63, 94, 0.1); }
+:root{
+--bg-dark:#0f172a;
+--bg-sidebar:#111827;
+--bg-card:#1e293b;
+--primary:#f43f5e;
+--text-muted:#94a3b8;
+--border:rgba(255,255,255,0.08);
+}
 
-    /* DASHBOARD CONTAINER */
-    .dashboard-container { 
-        display: flex; flex: 1; width: 100%; overflow: hidden; 
-    }
-    
-    /* SIDEBAR */
-    .sidebar { 
-        width: 300px; background: var(--bg-sidebar); 
-        border-right: 1px solid var(--border); 
-        display: flex; flex-direction: column; flex-shrink: 0; 
-    }
-    .sidebar-header { padding: 20px; border-bottom: 1px solid var(--border); }
-    .coach-name { font-weight: 700; font-size: 16px; color: #fff; }
-    .coach-email { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-    .verified-pill { 
-        display: inline-block; font-size: 10px; font-weight: 700; 
-        background: rgba(16, 185, 129, 0.15); color: #10b981; 
-        padding: 2px 8px; border-radius: 10px; margin-top: 8px; 
-    }
-    .sidebar-content { flex: 1; overflow-y: auto; padding: 16px; }
-    .section-label { 
-        font-size: 11px; font-weight: 700; text-transform: uppercase; 
-        letter-spacing: 1px; color: var(--text-muted); margin-bottom: 12px; display: block; 
-    }
+*{box-sizing:border-box}
 
-    /* PATIENT LIST */
-    .patient-item { 
-        padding: 14px; border-radius: 12px; margin-bottom: 8px; 
-        cursor: pointer; display: flex; justify-content: space-between; 
-        align-items: center; transition: all 0.2s; border: 1px solid transparent; 
-    }
-    .patient-item:hover { background: rgba(255,255,255,0.03); }
-    .patient-item.active { background: rgba(244, 63, 94, 0.1); border-color: var(--primary); }
-    .patient-item.active .p-name { color: var(--primary); }
-    .p-name { font-size: 14px; font-weight: 600; color: #e2e8f0; display: flex; align-items: center; gap: 8px; }
-    .p-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+body{
+margin:0;
+font-family:'Inter',sans-serif;
+background:var(--bg-dark);
+color:white;
+display:flex;
+flex-direction:column;
+height:100vh;
+overflow:hidden;
+}
 
-    /* MAIN CONTENT */
-    .main-content { 
-        flex: 1; overflow-y: auto; padding: 30px; 
-        background: var(--bg-dark); min-width: 0; width: 100%;
-    }
+/* HEADER */
 
-    .card { 
-        background: var(--bg-card); border-radius: 16px; padding: 24px; 
-        border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.15); 
-        margin-bottom: 24px; width: 100%;
-    }
-    
-    h3 { 
-        margin: 0 0 20px 0; font-size: 16px; font-weight: 700; 
-        color: #fff; border-bottom: 1px solid var(--border); 
-        padding-bottom: 12px; display: flex; justify-content: space-between; align-items: center; 
-    }
+header{
+height:70px;
+background:var(--bg-sidebar);
+border-bottom:1px solid var(--border);
+display:flex;
+align-items:center;
+padding:0 24px;
+flex-shrink:0;
+}
 
-    /* PRIVACY BANNER */
-    .privacy-banner { 
-        background: rgba(59, 130, 246, 0.1); border: 1px dashed #3b82f6; 
-        color: #93c5fd; padding: 16px; border-radius: 12px; 
-        font-size: 13px; margin-bottom: 20px; display: flex; 
-        align-items: center; gap: 12px; width: 100%;
-    }
-    .privacy-content { flex: 1; }
+.header-brand{
+font-weight:700;
+font-size:20px;
+display:flex;
+align-items:center;
+gap:8px;
+}
 
-    /* VITALS GRID */
-    .vitals-grid { 
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); 
-        gap: 20px; list-style: none; padding: 0; margin: 0; width: 100%;
-    }
-    .vital-card { 
-        background: rgba(0,0,0,0.2); padding: 20px; border-radius: 14px; 
-        text-align: center; border: 1px solid var(--border); 
-    }
-    .v-label { 
-        font-size: 11px; font-weight: 700; color: var(--text-muted); 
-        text-transform: uppercase; margin-bottom: 6px; 
-    }
-    .v-value { font-size: 24px; font-weight: 700; color: #fff; }
+.header-brand span{
+color:var(--primary);
+}
 
-    /* CHAT SYSTEM */
-    .notes-scroll { 
-        height: 400px; overflow-y: auto; padding-right: 8px; margin-bottom: 20px; 
-        display: flex; flex-direction: column; gap: 16px; 
-        background: rgba(0,0,0,0.2); padding: 20px; 
-        border-radius: 12px; border: 1px solid var(--border); 
-    }
-    
-    .chat-bubble { 
-        max-width: 75%; padding: 12px 16px; border-radius: 12px; 
-        font-size: 14px; line-height: 1.5; position: relative; word-wrap: break-word; 
-    }
-    
-    .msg-user { align-self: flex-start; background: #334155; color: #f1f5f9; border-bottom-left-radius: 2px; }
-    .msg-coach { align-self: flex-end; background: var(--primary); color: white; border-bottom-right-radius: 2px; }
+.btn-patients{
+width:100%;
+background:var(--primary);
+border:none;
+padding:14px 24px;
+border-radius:10px;
+color:white;
+font-weight:600;
+cursor:pointer;
+display:flex;
+align-items:center;
+justify-content:center;
+gap:8px;
+transition:0.2s;
+font-size:15px;
+margin-bottom:20px;
+position:relative;
+}
 
-    .msg-meta { 
-        font-size: 10px; opacity: 0.7; margin-bottom: 4px; 
-        display: block; font-weight: 700; text-transform: uppercase; 
-    }
+.btn-patients:hover{
+background:#dc2f45;
+transform:translateY(-2px);
+box-shadow:0 4px 12px rgba(244,63,94,0.3);
+}
 
-    .input-wrapper { position: relative; width: 100%; }
-    textarea { 
-        width: 100%; padding: 16px; border-radius: 12px; 
-        background: #0f172a; border: 1px solid var(--border); 
-        color: white; font-family: inherit; font-size: 14px; 
-        resize: none; outline: none; min-height: 80px; 
-    }
-    textarea:focus { border-color: var(--primary); }
-    
-    .btn-primary { 
-        position: absolute; bottom: 12px; right: 12px; 
-        background: var(--primary); color: white; border: none; 
-        padding: 8px 16px; border-radius: 8px; font-weight: 600; 
-        font-size: 13px; cursor: pointer; transition: 0.2s; 
-    }
-    .btn-primary:hover { background: var(--primary-hover); }
-    
-    .anon-badge {
-        background: #334155; color: #cbd5e1; font-size: 10px; 
-        padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px;
-    }
+.arrow-icon{
+position:absolute;
+right:24px;
+font-size:14px;
+transition:transform 0.3s ease;
+}
 
-    @media (max-width: 768px) {
-        .dashboard-container { flex-direction: column; overflow-y: auto; }
-        .sidebar { width: 100%; height: auto; max-height: 250px; border-right: none; border-bottom: 1px solid var(--border); }
-        .main-content { overflow: visible; }
-    }
+.arrow-icon.rotated{
+transform:rotate(180deg);
+}
+
+/* MAIN */
+
+.main-content{
+flex:1;
+overflow:auto;
+padding:24px;
+display:grid;
+grid-template-columns:1fr 400px;
+gap:20px;
+}
+
+@media(max-width:1200px){
+.main-content{
+grid-template-columns:1fr;
+}
+}
+
+.left-column{
+display:flex;
+flex-direction:column;
+gap:20px;
+}
+
+.right-column{
+display:flex;
+flex-direction:column;
+gap:20px;
+}
+
+/* PRIVACY */
+
+.privacy-banner{
+background:rgba(59,130,246,0.1);
+border:1px dashed #3b82f6;
+color:#93c5fd;
+padding:18px 20px;
+border-radius:12px;
+font-size:14px;
+display:flex;
+align-items:center;
+gap:10px;
+}
+
+/* CARD */
+
+.card{
+background:var(--bg-card);
+border-radius:16px;
+padding:24px;
+border:1px solid var(--border);
+display:flex;
+flex-direction:column;
+}
+
+.card h3{
+margin:0 0 20px 0;
+font-size:16px;
+display:flex;
+align-items:center;
+gap:8px;
+}
+
+.card h3 span{
+color:var(--text-muted);
+font-size:14px;
+font-weight:500;
+}
+
+/* VITAL GRID */
+
+.vitals-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+gap:16px;
+list-style:none;
+padding:0;
+margin:0;
+}
+
+.vital-card{
+background:rgba(0,0,0,0.25);
+padding:20px;
+border-radius:12px;
+text-align:center;
+border:1px solid rgba(255,255,255,0.05);
+}
+
+.v-label{
+font-size:12px;
+color:var(--text-muted);
+text-transform:uppercase;
+letter-spacing:0.5px;
+margin-bottom:8px;
+}
+
+.v-value{
+font-size:28px;
+font-weight:700;
+}
+
+.chart-container{
+grid-column:1/-1;
+margin-top:8px;
+}
+
+/* CHAT */
+
+.chat-card{
+flex:1;
+display:flex;
+flex-direction:column;
+min-height:500px;
+}
+
+.notes-scroll{
+flex:1;
+overflow-y:auto;
+background:rgba(0,0,0,0.2);
+padding:20px;
+border-radius:12px;
+display:flex;
+flex-direction:column;
+gap:14px;
+margin-bottom:16px;
+}
+
+.notes-scroll::-webkit-scrollbar{
+width:6px;
+}
+
+.notes-scroll::-webkit-scrollbar-track{
+background:rgba(0,0,0,0.2);
+border-radius:10px;
+}
+
+.notes-scroll::-webkit-scrollbar-thumb{
+background:rgba(255,255,255,0.2);
+border-radius:10px;
+}
+
+.chat-bubble{
+max-width:75%;
+padding:14px 16px;
+border-radius:12px;
+font-size:14px;
+line-height:1.5;
+animation:slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn{
+from{
+opacity:0;
+transform:translateY(10px);
+}
+to{
+opacity:1;
+transform:translateY(0);
+}
+}
+
+.msg-user{
+background:#334155;
+align-self:flex-start;
+border-bottom-left-radius:4px;
+}
+
+.msg-coach{
+background:var(--primary);
+align-self:flex-end;
+border-bottom-right-radius:4px;
+}
+
+.msg-meta{
+font-size:11px;
+opacity:0.8;
+display:block;
+margin-bottom:6px;
+font-weight:600;
+}
+
+/* INPUT */
+
+.input-area{
+display:flex;
+flex-direction:column;
+gap:12px;
+}
+
+textarea{
+width:100%;
+padding:14px;
+border-radius:10px;
+background:#0f172a;
+border:1px solid var(--border);
+color:white;
+resize:none;
+font-family:inherit;
+font-size:14px;
+min-height:80px;
+transition:0.2s;
+}
+
+textarea:focus{
+outline:none;
+border-color:var(--primary);
+}
+
+.btn-primary{
+background:var(--primary);
+border:none;
+padding:12px 20px;
+border-radius:10px;
+color:white;
+font-weight:600;
+cursor:pointer;
+transition:0.2s;
+font-size:14px;
+}
+
+.btn-primary:hover{
+background:#dc2f45;
+transform:translateY(-1px);
+}
+
+.btn-primary:disabled{
+opacity:0.5;
+cursor:not-allowed;
+}
+
+/* PATIENT DRAWER */
+
+.patient-drawer{
+position:fixed;
+left:0;
+right:0;
+bottom:-450px;
+height:450px;
+background:var(--bg-sidebar);
+border-top-left-radius:20px;
+border-top-right-radius:20px;
+transition:0.4s cubic-bezier(0.4, 0, 0.2, 1);
+z-index:10;
+display:flex;
+flex-direction:column;
+box-shadow:0 -4px 20px rgba(0,0,0,0.5);
+}
+
+@media(max-width:768px){
+.patient-drawer{
+height:70vh;
+bottom:-70vh;
+}
+}
+
+.patient-drawer.open{
+bottom:0;
+}
+
+.drawer-header{
+padding:20px 24px;
+font-weight:600;
+font-size:16px;
+border-bottom:1px solid var(--border);
+display:flex;
+align-items:center;
+justify-content:center;
+gap:10px;
+flex-shrink:0;
+position:relative;
+}
+
+.drawer-header::before{
+content:'';
+position:absolute;
+top:8px;
+left:50%;
+transform:translateX(-50%);
+width:40px;
+height:4px;
+background:var(--text-muted);
+border-radius:2px;
+opacity:0.3;
+}
+
+.patient-list{
+flex:1;
+overflow-x:auto;
+overflow-y:hidden;
+padding:20px 24px;
+display:flex;
+gap:16px;
+}
+
+.patient-list::-webkit-scrollbar{
+height:6px;
+}
+
+.patient-list::-webkit-scrollbar-track{
+background:rgba(0,0,0,0.2);
+}
+
+.patient-list::-webkit-scrollbar-thumb{
+background:rgba(255,255,255,0.2);
+border-radius:10px;
+}
+
+.patient-item{
+padding:20px;
+border-radius:12px;
+cursor:pointer;
+background:rgba(255,255,255,0.03);
+border:1px solid var(--border);
+transition:0.2s;
+min-width:200px;
+flex-shrink:0;
+}
+
+.patient-item:hover{
+background:rgba(255,255,255,0.08);
+transform:translateY(-4px);
+border-color:var(--primary);
+}
+
+.patient-item.active{
+background:rgba(244,63,94,0.1);
+border-color:var(--primary);
+}
+
+.patient-name{
+font-weight:600;
+margin-bottom:6px;
+display:flex;
+align-items:center;
+gap:8px;
+}
+
+.patient-reason{
+font-size:12px;
+color:var(--text-muted);
+}
+
+/* OVERLAY */
+
+.drawer-overlay{
+position:fixed;
+inset:0;
+background:rgba(0,0,0,0.5);
+opacity:0;
+pointer-events:none;
+transition:0.3s;
+z-index:9;
+}
+
+.drawer-overlay.active{
+opacity:1;
+pointer-events:all;
+}
+
+/* EMPTY STATE */
+
+.empty-state{
+text-align:center;
+padding:60px 20px;
+color:var(--text-muted);
+}
+
+.empty-state-icon{
+font-size:48px;
+margin-bottom:16px;
+opacity:0.3;
+}
+
+.empty-state-text{
+font-size:14px;
+}
 
 </style>
 </head>
+
 <body>
 
 <header>
-    <div class="brand">❤️ <span>HridyaCare</span> Coach</div>
-    <a href="#" class="logout-btn">Sign Out</a>
+<div class="header-brand">
+❤️ <span>HridyaCare</span> Coach
+</div>
 </header>
 
-<div class="dashboard-container">
-    <aside class="sidebar">
-        <div class="sidebar-header">
-            <div class="coach-name" id="coachName">Loading...</div>
-            <div class="coach-email" id="coachEmail">...</div>
-            <span class="verified-pill" id="coachStatus">Checking...</span>
-        </div>
-        <div class="sidebar-content">
-            <span class="section-label">Active Consultations</span>
-            <div id="patientList">
-                <div style="text-align:center; color:var(--text-muted); padding:20px; font-size:13px;">Loading list...</div>
-            </div>
-        </div>
-    </aside>
+<div class="main-content">
 
-    <main class="main-content">
-        <div class="privacy-banner">
-            <span style="font-size:20px">🔒</span>
-            <div class="privacy-content">
-                <strong>Privacy Protocol Active:</strong> Patient identity is masked. You are viewing <strong>Age, AQI, and Heart Data</strong> only.
-            </div>
-        </div>
+<div class="left-column">
 
-        <div class="card">
-            <h3>📊 Restricted Health Data <span class="anon-badge" id="headerAnonId">No Patient Selected</span></h3>
-            <ul id="vitalsGrid" class="vitals-grid">
-                <li style="grid-column:1/-1; text-align:center; padding:40px; color:var(--text-muted);">
-                    <div style="font-size:32px; margin-bottom:10px; opacity:0.5;">👈</div>
-                    Select an anonymous patient from the sidebar.
-                </li>
-            </ul>
-        </div>
+<div class="privacy-banner">
+<span>🔒</span>
+<span>Privacy Protocol Active: Patient identity masked. Viewing Age, AQI and Heart Data only.</span>
+</div>
 
-        <div class="card">
-            <h3>💬 Encrypted Consultation Channel</h3>
-            <div id="notesContainer" class="notes-scroll">
-                <div style="text-align:center; padding-top:100px; color:var(--text-muted);">
-                    Chat history will appear here.
-                </div>
-            </div>
-            <div class="input-wrapper">
-                <textarea id="coachNoteInput" placeholder="Type your advice here... (Patient will see this immediately)"></textarea>
-                <button class="btn-primary" id="saveNoteBtn">Send Reply</button>
-            </div>
-        </div>
-    </main>
+<button class="btn-patients" onclick="togglePatients()">
+<span>👥</span>
+<span>View Patients</span>
+<span id="arrowIcon" class="arrow-icon">▼</span>
+</button>
+
+<div class="card">
+<h3>📊 Restricted Health Data <span id="headerAnonId">· No Patient Selected</span></h3>
+
+<ul id="vitalsGrid" class="vitals-grid">
+<li class="empty-state" style="grid-column:1/-1;">
+<div class="empty-state-icon">👤</div>
+<div class="empty-state-text">Select a patient from the list to view their health data</div>
+</li>
+</ul>
+
+</div>
+
+</div>
+
+<div class="right-column">
+
+<div class="card chat-card">
+
+<h3>💬 Encrypted Consultation Channel</h3>
+
+<div id="notesContainer" class="notes-scroll">
+<div class="empty-state">
+<div class="empty-state-icon">💬</div>
+<div class="empty-state-text">Chat history will appear here</div>
+</div>
+</div>
+
+<div class="input-area">
+<textarea id="coachNoteInput" placeholder="Type your medical advice or consultation notes..."></textarea>
+<button class="btn-primary" id="saveNoteBtn">Send Reply</button>
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<!-- OVERLAY -->
+<div id="drawerOverlay" class="drawer-overlay" onclick="togglePatients()"></div>
+
+<!-- PATIENT DRAWER -->
+<div id="patientDrawer" class="patient-drawer">
+
+<div class="drawer-header">
+<span>👥</span>
+<span>Active Patients</span>
+</div>
+
+<div id="patientList" class="patient-list">
+<div class="empty-state">
+<div class="empty-state-icon">⏳</div>
+<div class="empty-state-text">Loading patients...</div>
+</div>
+</div>
+
 </div>
 
 <script>
-// --- PRIVACY ENGINE: Anonymizer Function ---
-function maskPatientName(id) {
-    return `Patient-${id.toString().padStart(4, '0')}`;
+
+function togglePatients(){
+const drawer = document.getElementById("patientDrawer");
+const overlay = document.getElementById("drawerOverlay");
+const arrow = document.getElementById("arrowIcon");
+drawer.classList.toggle("open");
+overlay.classList.toggle("active");
+arrow.classList.toggle("rotated");
 }
 
-// 1. INIT COACH PROFILE
-async function loadCoachProfile() {
-    try {
-        const res = await fetch("/api/coach/profile");
-        if(res.ok) {
-            const data = await res.json();
-            document.getElementById("coachName").innerText = data.name;
-            document.getElementById("coachEmail").innerText = data.email;
-            document.getElementById("coachStatus").innerText = data.status === "approved" ? "Verified Coach" : "Pending";
-        } else {
-            document.getElementById("coachName").innerText = "Guest";
-        }
-    } catch(e) { console.error("Profile Error", e); }
+/* ORIGINAL LOGIC */
+
+function maskPatientName(id){
+return `Patient-${id.toString().padStart(4,'0')}`
 }
 
-// 2. LOAD PATIENT LIST
 fetch("/api/coach/requests")
-  .then(res => res.json())
-  .then(data => {
-    const list = document.getElementById("patientList");
-    list.innerHTML = "";
+.then(res=>res.json())
+.then(data=>{
+const list=document.getElementById("patientList")
+list.innerHTML=""
 
-    if (!data.length) {
-      list.innerHTML = "<div style='text-align:center; color:#94a3b8; padding:20px; font-size:13px;'>No active requests.</div>";
-      return;
-    }
-
-    data.forEach(req => {
-      const anonName = maskPatientName(req.patient_id);
-      list.innerHTML += `
-        <div class="patient-item" data-id="${req.patient_id}" onclick="selectPatient(this)">
-          <div>
-            <div class="p-name"><span style="font-size:16px;">👤</span> ${anonName}</div>
-            <div class="p-sub">${req.reason || 'General Consult'}</div>
-          </div>
-          <div style="color:#64748b;">›</div>
-        </div>
-      `;
-    });
-  })
-  .catch(err => console.error("Error loading requests", err));
-
-// 3. SELECT PATIENT HANDLER
-let selectedPatientId = null;
-let chatPollInterval = null;
-
-function selectPatient(el) {
-    document.querySelectorAll(".patient-item").forEach(p => p.classList.remove("active"));
-    el.classList.add("active");
-    selectedPatientId = el.dataset.id;
-    
-    document.getElementById("headerAnonId").innerText = maskPatientName(selectedPatientId);
-    
-    // Load Data
-    loadVitals(selectedPatientId);
-    loadChat(selectedPatientId);
-    
-    if (chatPollInterval) clearInterval(chatPollInterval);
-    chatPollInterval = setInterval(() => loadChat(selectedPatientId, false), 3000); 
+if(data.length === 0){
+list.innerHTML = `
+<div class="empty-state">
+<div class="empty-state-icon">👥</div>
+<div class="empty-state-text">No active patients at the moment</div>
+</div>
+`;
+return;
 }
 
-// 4. LOAD VITALS
-async function loadVitals(userId) {
-    const grid = document.getElementById("vitalsGrid");
-    const mockAge = Math.floor(Math.random() * (60 - 25 + 1) + 25);
-    
-    try {
-        const res = await fetch(`/api/last-health-summary?user_id=${userId}`);
-        const data = await res.json();
+data.forEach(req=>{
+const anonName=maskPatientName(req.patient_id)
 
-        if (!data.exists) {
-            grid.innerHTML = `<li style="grid-column:1/-1;text-align:center;color:#f43f5e; padding:30px;">Data unavailable.</li>`;
-            return;
-        }
-
-        grid.innerHTML = `
-            <li class="vital-card">
-                <div class="v-label">Patient Age</div>
-                <div class="v-value" style="color:#94a3b8">${mockAge}</div>
-            </li>
-            <li class="vital-card">
-                <div class="v-label">Avg Heart Rate</div>
-                <div class="v-value" style="color:#f43f5e">${data.bpm} <span style="font-size:14px;">BPM</span></div>
-            </li>
-            <li class="vital-card">
-                <div class="v-label">Environment AQI</div>
-                <div class="v-value" style="color:#eab308">${data.aqi}</div>
-            </li>
-            <li class="vital-card">
-                <div class="v-label">Calculated Risk</div>
-                <div class="v-value" style="font-size:18px;">${data.impactCategory}</div>
-            </li>
-            <li style="grid-column: 1/-1; margin-top:10px;">
-                <canvas id="coachChart" height="200" style="width:100%;"></canvas>
-            </li>
-        `;
-
-        // IMPORTANT: Load graph AFTER DOM update
-        setTimeout(() => loadGraph(userId), 100);
-
-    } catch(e) {
-        console.error(e);
-        grid.innerHTML = "Error loading vitals.";
-    }
-}
-
-async function loadGraph(userId) {
-    try {
-        const res = await fetch(`/api/coach/patient/${userId}/last-7`);
-        const data = await res.json();
-        
-        if(!data || !data.length) return;
-        
-        const ctx = document.getElementById("coachChart");
-        if(!ctx) return; 
-
-        if (window.coachChartInstance) window.coachChartInstance.destroy();
-
-        window.coachChartInstance = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: data.map(d => new Date(d.time).toLocaleDateString(undefined, {day:'numeric'})),
-                datasets: [{
-                    label: 'Heart Rate Trend',
-                    data: data.map(d => d.bpm),
-                    borderColor: '#f43f5e',
-                    backgroundColor: 'rgba(244, 63, 94, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { display: false }, ticks: { color: '#64748b' } },
-                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } }
-                }
-            }
-        });
-    } catch(e) { console.error("Graph error", e); }
-}
-
-// 5. LOAD CHAT
-async function loadChat(userId, scrollToBottom = true) {
-    const container = document.getElementById("notesContainer");
-    
-    try {
-        const res = await fetch(`/api/coach/patient/${userId}`);
-        const data = await res.json();
-        let html = "";
-
-        if (data.notes && data.notes.length) {
-            data.notes.forEach(n => {
-                const isUser = n.sender === 'patient';
-                const senderName = isUser ? maskPatientName(userId) : "You (Coach)";
-                const bubbleClass = isUser ? "msg-user" : "msg-coach";
-
-                html += `
-                    <div class="chat-bubble ${bubbleClass}">
-                        <span class="msg-meta">${senderName} • ${n.date}</span>
-                        ${n.note}
-                    </div>
-                `;
-            });
-        } else {
-            html = "<p style='text-align:center; color:#64748b; margin-top:40px;'>No messages yet. Start the conversation.</p>";
-        }
-
-        container.innerHTML = html;
-        if(scrollToBottom) container.scrollTop = container.scrollHeight;
-    } catch(e) { console.error("Chat error", e); }
-}
-
-// 6. SEND MESSAGE
-document.getElementById("saveNoteBtn").addEventListener("click", async () => {
-    if (!selectedPatientId) return alert("Select a patient first.");
-    const input = document.getElementById("coachNoteInput");
-    const note = input.value.trim();
-    if (!note) return;
-
-    const btn = document.getElementById("saveNoteBtn");
-    btn.disabled = true; btn.innerText = "...";
-
-    try {
-        await fetch("/api/coach/add-note", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ patient_id: selectedPatientId, note: note }) 
-        });
-        input.value = "";
-        loadChat(selectedPatientId);
-    } catch(e) { alert("Error sending"); } 
-    finally { btn.disabled = false; btn.innerText = "Send Reply"; }
+list.innerHTML+=`
+<div class="patient-item" data-id="${req.patient_id}" onclick="selectPatient(this)">
+<div class="patient-name">👤 ${anonName}</div>
+<div class="patient-reason">${req.reason||'General Consultation'}</div>
+</div>
+`
+})
+})
+.catch(err => {
+const list=document.getElementById("patientList");
+list.innerHTML = `
+<div class="empty-state">
+<div class="empty-state-icon">⚠️</div>
+<div class="empty-state-text">Failed to load patients</div>
+</div>
+`;
 });
 
-loadCoachProfile();
+let selectedPatientId=null
+
+function selectPatient(el){
+
+// Remove active class from all items
+document.querySelectorAll('.patient-item').forEach(item => {
+item.classList.remove('active');
+});
+
+// Add active class to selected item
+el.classList.add('active');
+
+selectedPatientId=el.dataset.id
+
+document.getElementById("headerAnonId").innerText=`· ${maskPatientName(selectedPatientId)}`
+
+loadVitals(selectedPatientId)
+loadChat(selectedPatientId)
+
+}
+
+async function loadVitals(userId){
+
+const grid=document.getElementById("vitalsGrid")
+
+grid.innerHTML = `
+<li class="empty-state" style="grid-column:1/-1;">
+<div class="empty-state-icon">⏳</div>
+<div class="empty-state-text">Loading health data...</div>
+</li>
+`;
+
+try{
+const res=await fetch(`/api/last-health-summary?user_id=${userId}`)
+const data=await res.json()
+
+grid.innerHTML=`
+<li class="vital-card">
+<div class="v-label">Heart Rate</div>
+<div class="v-value">${data.bpm || '--'}</div>
+</li>
+
+<li class="vital-card">
+<div class="v-label">AQI</div>
+<div class="v-value">${data.aqi || '--'}</div>
+</li>
+
+<li class="vital-card">
+<div class="v-label">Risk</div>
+<div class="v-value">${data.impactCategory || '--'}</div>
+</li>
+
+<li class="chart-container">
+<canvas id="coachChart"></canvas>
+</li>
+`
+}catch(err){
+grid.innerHTML = `
+<li class="empty-state" style="grid-column:1/-1;">
+<div class="empty-state-icon">⚠️</div>
+<div class="empty-state-text">Failed to load health data</div>
+</li>
+`;
+}
+
+}
+
+async function loadChat(userId){
+
+const container=document.getElementById("notesContainer")
+
+container.innerHTML = `
+<div class="empty-state">
+<div class="empty-state-icon">⏳</div>
+<div class="empty-state-text">Loading messages...</div>
+</div>
+`;
+
+try{
+const res=await fetch(`/api/coach/patient/${userId}`)
+const data=await res.json()
+
+let html=""
+
+if(data.notes && data.notes.length > 0){
+data.notes.forEach(n=>{
+
+const bubble=n.sender==='patient'?'msg-user':'msg-coach'
+const sender=n.sender==='patient'?maskPatientName(userId):"You"
+
+html+=`
+<div class="chat-bubble ${bubble}">
+<span class="msg-meta">${sender}</span>
+${n.note}
+</div>
+`
+})
+container.innerHTML=html
+}else{
+container.innerHTML = `
+<div class="empty-state">
+<div class="empty-state-icon">💬</div>
+<div class="empty-state-text">No messages yet. Start the conversation!</div>
+</div>
+`;
+}
+
+container.scrollTop=container.scrollHeight
+
+}catch(err){
+container.innerHTML = `
+<div class="empty-state">
+<div class="empty-state-icon">⚠️</div>
+<div class="empty-state-text">Failed to load messages</div>
+</div>
+`;
+}
+
+}
+
+document.getElementById("saveNoteBtn").addEventListener("click",async()=>{
+
+if(!selectedPatientId){
+alert('Please select a patient first');
+return;
+}
+
+const input=document.getElementById("coachNoteInput")
+const note=input.value.trim()
+
+if(!note){
+return;
+}
+
+const btn = document.getElementById("saveNoteBtn");
+btn.disabled = true;
+btn.textContent = 'Sending...';
+
+try{
+await fetch("/api/coach/add-note",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({patient_id:selectedPatientId,note:note})
+})
+
+input.value=""
+loadChat(selectedPatientId)
+}catch(err){
+alert('Failed to send message');
+}finally{
+btn.disabled = false;
+btn.textContent = 'Send Reply';
+}
+
+})
+
+// Allow Enter to send (Shift+Enter for new line)
+document.getElementById("coachNoteInput").addEventListener("keydown", (e) => {
+if(e.key === 'Enter' && !e.shiftKey){
+e.preventDefault();
+document.getElementById("saveNoteBtn").click();
+}
+});
+
 </script>
+
 </body>
 </html>
